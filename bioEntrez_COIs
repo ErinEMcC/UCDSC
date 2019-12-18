@@ -7,9 +7,9 @@ def search(query):
     Entrez.email = '__EMAIL__'
     handle = Entrez.esearch(db='pubmed',
                             api_key='__API_KEY__',
-                            #retstart/max used to page thru 400k+ results (100k at a time)
+                            #retstart/max used to page thru 400k+ results (10k at a time)
                             retstart=0,
-                            retmax=100000,
+                            retmax=10000,
                             retmode='xml',
                             term=query)
     results = Entrez.read(handle)
@@ -34,10 +34,32 @@ if __name__ == '__main__':
     for i, paper in enumerate(papers['PubmedArticle']):
         
         COI_dict = {}
-        COI_dict['cois'] = paper['MedlineCitation']['CoiStatement']
-        COI_dict['art_title'] = paper['MedlineCitation']['Article']['ArticleTitle']
-        COI_dict['journal'] = paper['MedlineCitation']['Article']['Journal']['Title']
+        COI_dict['cois'] = paper['MedlineCitation']['CoiStatement'].replace(',', '').encode('utf-8')
+        COI_dict['art_title'] = paper['MedlineCitation']['Article']['ArticleTitle'].replace(',', '').encode('utf-8')
+        COI_dict['journal'] = paper['MedlineCitation']['Article']['Journal']['Title'].replace(',', '').encode('utf-8')
+        try:
+            AuthorList = paper['MedlineCitation']['Article']['AuthorList']
+        except KeyError:
+            continue
+        a_list = []
+        for Author in AuthorList:
+            try:
+                name = Author['ForeName']+' '+Author['LastName']
+                a_list.append(name)
+            except KeyError:
+                pass
+            try:
+                name = Author['CollectiveName'].encode('utf-8')
+            except KeyError:
+                try:
+                    name = Author['LastName']
+                except:
+                    print ('authError:', paper['MedlineCitation']['PMID'])
+                    pass
+        authors = '; '.join([str(elem.encode('utf-8')) for elem in a_list])
+        COI_dict['authors'] = authors
         COI_dict['pmid'] = paper['MedlineCitation']['PMID']
+
         try:
             COI_dict['pub_year'] = paper['MedlineCitation']['Article']['Journal']['JournalIssue']['PubDate']['Year']
         except KeyError: 
@@ -46,4 +68,4 @@ if __name__ == '__main__':
 
         cois.append(COI_dict)
     
-    json.dump(cois, open("COI_range427k.json", "w"), indent=4)
+    json.dump(cois, open("COI_range428593k.json", "w"), indent=4)
